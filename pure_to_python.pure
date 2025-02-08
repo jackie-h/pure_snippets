@@ -1,0 +1,67 @@
+function go():Any[*]
+{
+  print('ok', 1);
+  //meta::relational::functions::sqlQueryToString::oracle::tests::testConcat();
+  //print(meta::pure::metamodel->meta::json::toJSON());
+
+  //meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::pure::metamodel::serialization::json::packageableElementToJSON()->meta::json::toPrettyJSONString()));
+  meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::json::toJSONElement()->meta::json::toPrettyJSONString()));
+
+  //meta::pure::metamodel->getAllPackageElements(true)->map(e | print($e->meta::external::language::python::serialization::toString()));
+
+  print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+
+
+  print(meta::pure::functions::meta::tests::isAbstract->meta::external::language::python::serialization::packageToString(true, []));
+
+  //print(meta::pure::metamodel::relationship::Generalization);
+
+  //print(meta::pure::metamodel::serialization::json::packageableElementToJSON(meta::pure::metamodel.children));
+}
+
+
+
+function meta::external::language::python::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*]):String[0..1]
+{
+  let a =  $p->getAllPackageElements(false)->partition(e | $e->type() == Package);
+  let packages = $a.first;
+  let others = $a.second;
+  let s = $p->elementToPath('/') + '\n\n' + $others.values->map(e | $e->meta::external::language::python::serialization::toString())->joinStrings();
+
+  if($recursive, | $s + $packages.values->map(p | $p->cast(@Package)->meta::external::language::python::serialization::packageToString($recursive, $exclusions))->joinStrings('\n'), | $s);
+}
+
+
+function meta::external::language::python::serialization::toString(pe:PackageableElement[1]):String[0..1]
+{ 
+  $pe->match([c:Class<Any>[1] | meta::external::language::python::serialization::classToString($c),
+            e:Enumeration<Any>[1] | meta::external::language::python::serialization::enumerationToString($e),
+            a:Any[1] | ''])
+}
+
+function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1]):String[0..1]
+{
+  //Put mandatory properties first
+  let allProps = $clazz->allProperties()->sort( { p1, p2 | if( $p1.multiplicity->getLowerBound() < $p2.multiplicity->getLowerBound(), | 1, | if( $p1.multiplicity->getLowerBound() == $p2.multiplicity->getLowerBound(), | 0, | -1)) });
+
+  let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
+
+
+  '\nclass ' + $clazz.name->toOne() + '(' + $clazz.generalizations.general.rawType.name->joinStrings(',') + '):\n' +
+  $docs + 
+  '\n' +
+  '    def __init__(self' + if($allProps->isEmpty(), | '' , | $allProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | ':' 
+              + if($p.multiplicity->isToMany(), 
+                    | 'list[' + $p.genericType.rawType->toOne().name->toOne() + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
+                    | $p.genericType.rawType->toOne().name->toOne() + if($p.multiplicity->getLowerBound() == 0, | '=None', | '')), | '')
+              )->joinStrings(', ', ', ', '')) + '):\n'  + 
+  $allProps.name->map(n | '        self.' + $n + ' = ' + $n + '\n')->joinStrings() +
+  '\n';
+}
+
+function meta::external::language::python::serialization::enumerationToString(e:Enumeration<Any>[1]):String[0..1]
+{
+  '\nclass ' + $e->enumName() + '(Enum):\n' + 
+  $e->enumValues()->map(v | '    ' + $v->cast(@Enum).name + ' = auto()')->joinStrings('\n')
+  + '\n'
+}
