@@ -1,0 +1,123 @@
+////
+////RUST
+////
+
+function meta::external::language::rust::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*]):String[1]
+{
+  let a =  $p->getAllPackageElements(false)->partition(e | $e->type() == Package);
+  let packages = $a.first;
+  let others = $a.second;
+  let s = '// ' + $p->elementToPath('/') + '\n\n' + $others.values->map(e | $e->meta::external::language::rust::serialization::toString())->joinStrings();
+
+  if($recursive, | $s + $packages.values->map(p | $p->cast(@Package)->meta::external::language::rust::serialization::packageToString($recursive, $exclusions))->joinStrings('\n'), | $s);
+}
+
+
+function meta::external::language::rust::serialization::toString(pe:PackageableElement[1]):String[1]
+{ 
+  $pe->match([c:Class<Any>[1] | meta::external::language::rust::serialization::classToString($c),
+            e:Enumeration<Any>[1] | meta::external::language::rust::serialization::enumerationToString($e),
+            a:Any[1] | ''])
+}
+
+function meta::external::language::rust::serialization::classToString(clazz:Class<Any>[1]):String[1]
+{
+  //Put mandatory properties first
+  let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations);
+  let allPropsWithInheritedProps = $clazz->hierarchicalProperties()->concatenate($clazz->hierarchicalPropertiesFromAssociations())->removeDuplicates();
+
+  let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
+
+
+  let genz = $clazz.generalizations.general.rawType->filter( t | $t != Any );
+
+
+  let struct = '\nstruct ' + $clazz.name->toOne() + 'Data {\n' +
+        $allPropsWithInheritedProps->map(p | '    ' + meta::external::language::rust::serialization::propertyName($p) + ': ' + if($p.genericType.rawType->isNotEmpty()
+              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, true);
+                  if($p.multiplicity->isToMany(), 
+                    | 'Vec<' + $tp + '>', 
+                    | let boxIt = meta::external::language::rust::serialization::needsBox($clazz, $p);
+                      let tpb = if($boxIt, | 'Box<' + $tp + '>', | $tp);
+                      if($p.multiplicity->getLowerBound() == 0, | 'Option<' + $tpb + '>', | $tpb);
+                      );
+              , | '')  + ',\n'
+            )->joinStrings() +
+  '}\n';
+
+  let trait = '\npub trait ' + $clazz.name->toOne() + ' {\n' +
+        $allProps->map(p | '    fn ' + meta::external::language::rust::serialization::propertyName($p) + '(&self) -> ' + if($p.genericType.rawType->isNotEmpty()
+              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, false);
+                  if($p.multiplicity->isToMany(), 
+                    | 'Vec<' + $tp + '>', 
+                    | if($p.multiplicity->getLowerBound() == 0, | 'Option<' + $tp + '>', | $tp));
+              , | '')  + ';\n'
+            )->joinStrings() +
+  '}\n';
+
+  let impl = meta::external::language::rust::serialization::createImpl($clazz, $clazz);
+
+  let genzImpl = $genz->map( g | meta::external::language::rust::serialization::createImpl($g->cast(@Class<Any>), $clazz))->joinStrings();
+  $trait + $struct + $impl + $genzImpl;
+}
+
+function meta::external::language::rust::serialization::createImpl(trait:Class<Any>[1], forClass:Class<Any>[1]):String[1]
+{
+  let allProps = $trait.properties->concatenate($trait.propertiesFromAssociations);
+  '\nimpl ' + $trait.name->toOne() + ' for ' + $forClass.name->toOne() + 'Data {\n' +
+        $allProps->map(p | 
+              let pn = meta::external::language::rust::serialization::propertyName($p);
+              '    fn ' + $pn + '(&self) -> ' + if($p.genericType.rawType->isNotEmpty()
+              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, false);
+                  if($p.multiplicity->isToMany(), 
+                    | 'Vec<' + $tp + '>', 
+                    | if($p.multiplicity->getLowerBound() == 0, | 'Option<' + $tp + '>', | $tp)
+                      );
+              , | '')  + ' {\n' +
+              '        &self.' + $pn + '\n' +
+              '    }\n';
+            )->joinStrings() +
+  '}\n';
+}
+
+function meta::external::language::rust::serialization::enumerationToString(e:Enumeration<Any>[1]):String[1]
+{
+  let docs = if( $e->meta::pure::functions::doc::hasDoc(), | '    """' + $e->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
+  '\nenum ' + $e->enumName() + 'Data {\n' + 
+  $docs +
+  $e->enumValues()->map(v | '    ' + $v->cast(@Enum).name)->joinStrings(',\n')
+  + '\n}\n';
+}
+
+function meta::external::language::rust::serialization::convertType(gt:GenericType[1], owned:Boolean[1]):String[1]
+{
+  let t = $gt.rawType;
+  
+  if( $t == Integer, | 'i64', | 
+    if( $t == String, | if( $owned, | 'String', | '&str' ), | 
+      if( $t == Float, | 'f64', | 
+        if( $t == Boolean, | 'bool', | 
+          if( $t == StrictDate , | 'chrono::DateTime', | 
+            if( $t == DateTime || $t == Date, | 'chrono::DateTime', | 
+        $t.name->toOne() + 'Data'
+  ))))));
+
+}
+
+function meta::external::language::rust::serialization::propertyName(property:AbstractProperty<Any>[1]):String[1]
+{
+  $property.name->toOne()->meta::pure::functions::string::splitOnCamelCase()->joinStrings('_')->toLower()
+    ->meta::external::language::rust::serialization::escapeKeywords()
+    
+}
+
+function meta::external::language::rust::serialization::needsBox(clazz:Class<Any>[1], p:AbstractProperty<Any>[1]):Boolean[1]
+{
+  //Can't have circular references between types, so need to check for them and surround in a Box 
+  if($clazz == $p.genericType.rawType->toOne() || ($p.genericType->genericTypeClass()->isNotEmpty() && $clazz->in($p.genericType.rawType->cast(@Class<Any>).properties->filter( p | $p.multiplicity->isToOne()).genericType.rawType)), | true , | false)    
+}
+
+function meta::external::language::rust::serialization::escapeKeywords(value:String[1]):String[1]
+{
+  if($value->in(['type']), | '_' + $value, | $value )
+}
