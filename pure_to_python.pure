@@ -50,10 +50,12 @@ function meta::external::language::python::serialization::classToString(clazz:Cl
   '\nclass ' + $clazz.name->toOne() + '(' + $clazz.generalizations.general.rawType.name->joinStrings(',') + '):\n' +
   $docs + 
   '\n' +
-  '    def __init__(self' + if($allProps->isEmpty(), | '' , | $allProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | ':' 
+  '    def __init__(self' + if($allProps->isEmpty(), | '' , | $allProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | 
+              let tp = meta::external::language::python::serialization::convertType($p.genericType);
+              ':' 
               + if($p.multiplicity->isToMany(), 
-                    | 'list[' + $p.genericType.rawType->toOne().name->toOne() + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
-                    | $p.genericType.rawType->toOne().name->toOne() + if($p.multiplicity->getLowerBound() == 0, | '=None', | '')), | '')
+                    | 'list[' + $tp + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
+                    | $tp + if($p.multiplicity->getLowerBound() == 0, | '=None', | ''));, | '')
               )->joinStrings(', ', ', ', '')) + '):\n'  + 
   $allProps.name->map(n | '        self.' + $n + ' = ' + $n + '\n')->joinStrings() +
   '\n';
@@ -64,4 +66,19 @@ function meta::external::language::python::serialization::enumerationToString(e:
   '\nclass ' + $e->enumName() + '(Enum):\n' + 
   $e->enumValues()->map(v | '    ' + $v->cast(@Enum).name + ' = auto()')->joinStrings('\n')
   + '\n'
+}
+
+function meta::external::language::python::serialization::convertType(gt:GenericType[1]):String[1]
+{
+  let t = $gt.rawType;
+  
+  if( $t == Integer, | 'int', | 
+    if( $t == String, | 'str', |
+      if( $t == Float, | 'float', | 
+        if( $t == Boolean, | 'bool', | 
+          if( $t == StrictDate , | 'datetime.date', | 
+            if( $t == DateTime, | 'datetime.datetime', | 
+        $t.name->toOne()
+  ))))));
+
 }
