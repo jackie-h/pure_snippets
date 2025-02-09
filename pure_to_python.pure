@@ -11,11 +11,11 @@ function go():Any[*]
 
   print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
 
-  print(meta::pure::mapping->meta::external::language::python::serialization::packageToString(false, []));
+  //print(meta::pure::mapping->meta::external::language::python::serialization::packageToString(false, []));
 
-  print(meta::relational::mapping->meta::external::language::python::serialization::packageToString(true, []));
+  //print(meta::relational::mapping->meta::external::language::python::serialization::packageToString(true, []));
 
-  print(meta::relational::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+  //print(meta::relational::metamodel->meta::external::language::python::serialization::packageToString(true, []));
   
 
 
@@ -33,7 +33,7 @@ function meta::external::language::python::serialization::packageToString(p:Pack
   let a =  $p->getAllPackageElements(false)->partition(e | $e->type() == Package);
   let packages = $a.first;
   let others = $a.second;
-  let s = $p->elementToPath('/') + '\n\n' + $others.values->map(e | $e->meta::external::language::python::serialization::toString())->joinStrings();
+  let s = '# ' + $p->elementToPath('/') + '\n\n' + $others.values->map(e | $e->meta::external::language::python::serialization::toString())->joinStrings();
 
   if($recursive, | $s + $packages.values->map(p | $p->cast(@Package)->meta::external::language::python::serialization::packageToString($recursive, $exclusions))->joinStrings('\n'), | $s);
 }
@@ -81,9 +81,11 @@ function meta::external::language::python::serialization::classToString(clazz:Cl
 
 function meta::external::language::python::serialization::enumerationToString(e:Enumeration<Any>[1]):String[0..1]
 {
+  let docs = if( $e->meta::pure::functions::doc::hasDoc(), | '    """' + $e->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
   '\nclass ' + $e->enumName() + '(Enum):\n' + 
+  $docs +
   $e->enumValues()->map(v | '    ' + $v->cast(@Enum).name + ' = auto()')->joinStrings('\n')
-  + '\n'
+  + '\n';
 }
 
 function meta::external::language::python::serialization::inheritedProperties(class:Class<Any>[1]):Property<Nil,Any|*>[*]
