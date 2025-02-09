@@ -11,8 +11,15 @@ function go():Any[*]
 
   print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
 
+  print(meta::pure::mapping->meta::external::language::python::serialization::packageToString(false, []));
 
-  print(meta::pure::functions::meta::tests::isAbstract->meta::external::language::python::serialization::packageToString(true, []));
+  print(meta::relational::mapping->meta::external::language::python::serialization::packageToString(true, []));
+
+  print(meta::relational::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+  
+
+
+  //print(meta::pure::functions::meta::tests::isAbstract->meta::external::language::python::serialization::packageToString(true, []));
 
   //print(meta::pure::metamodel::relationship::Generalization);
 
@@ -42,22 +49,33 @@ function meta::external::language::python::serialization::toString(pe:Packageabl
 function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1]):String[0..1]
 {
   //Put mandatory properties first
-  let allProps = $clazz->allProperties()->sort( { p1, p2 | if( $p1.multiplicity->getLowerBound() < $p2.multiplicity->getLowerBound(), | 1, | if( $p1.multiplicity->getLowerBound() == $p2.multiplicity->getLowerBound(), | 0, | -1)) });
+  let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations)->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
 
   let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
 
 
-  '\nclass ' + $clazz.name->toOne() + '(' + $clazz.generalizations.general.rawType.name->joinStrings(',') + '):\n' +
+  let genz = $clazz.generalizations.general.rawType->filter( t | $t != Any );
+
+  let inheritedProps = $clazz->meta::external::language::python::serialization::inheritedProperties()->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
+  let propsWithInheritedProps = $inheritedProps->concatenate($allProps)->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
+
+
+  '\nclass ' + $clazz.name->toOne() + '(' + $genz.name->joinStrings(',') + '):\n' +
   $docs + 
   '\n' +
-  '    def __init__(self' + if($allProps->isEmpty(), | '' , | $allProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | 
+  '    def __init__(self' + if($propsWithInheritedProps->isEmpty(), | '' , | $propsWithInheritedProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | 
               let tp = meta::external::language::python::serialization::convertType($p.genericType);
               ':' 
               + if($p.multiplicity->isToMany(), 
                     | 'list[' + $tp + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
                     | $tp + if($p.multiplicity->getLowerBound() == 0, | '=None', | ''));, | '')
               )->joinStrings(', ', ', ', '')) + '):\n'  + 
-  $allProps.name->map(n | '        self.' + $n + ' = ' + $n + '\n')->joinStrings() +
+          if($genz->isEmpty(), | ''
+                             , | if($genz->size() == 1, | '        super().__init__(' + $inheritedProps.name->joinStrings(',') + ')\n'
+                                                      , | $genz->map(g | '        ' + $g.name->toOne() + '.__init__(' + $g->cast(@Class<Any>)->hierarchicalProperties()->concatenate($g->cast(@Class<Any>)->hierarchicalPropertiesFromAssociations())
+                                                                                                                 ->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) }).name->joinStrings(',') + ')\n')->joinStrings())) +
+        $allProps.name->map(n | '        self.' + $n + ' = ' + $n + '\n')->joinStrings() +
+        if($propsWithInheritedProps->isEmpty() && $genz->isEmpty(), | '        pass', | '') +
   '\n';
 }
 
@@ -66,6 +84,21 @@ function meta::external::language::python::serialization::enumerationToString(e:
   '\nclass ' + $e->enumName() + '(Enum):\n' + 
   $e->enumValues()->map(v | '    ' + $v->cast(@Enum).name + ' = auto()')->joinStrings('\n')
   + '\n'
+}
+
+function meta::external::language::python::serialization::inheritedProperties(class:Class<Any>[1]):Property<Nil,Any|*>[*]
+{
+   if($class==Any,
+      | [],
+      | $class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne())->concatenate(hierarchicalPropertiesFromAssociations($g.general.rawType->cast(@Class<Any>)->toOne())))->removeDuplicates()
+   );
+}
+
+function meta::external::language::python::serialization::multiplicityOrderBy(p1:AbstractProperty<Any>[1], p2:AbstractProperty<Any>[1]):Integer[1]
+{
+  let l1 = if($p1.multiplicity->hasLowerBound(), | $p1.multiplicity->getLowerBound(), | 0 );
+  let l2 = if($p2.multiplicity->hasLowerBound(), | $p2.multiplicity->getLowerBound(), | 0 );
+  if( $l1 < $l2, | 1, | if( $l1 == $l2, | 0, | -1));
 }
 
 function meta::external::language::python::serialization::convertType(gt:GenericType[1]):String[1]
@@ -77,7 +110,7 @@ function meta::external::language::python::serialization::convertType(gt:Generic
       if( $t == Float, | 'float', | 
         if( $t == Boolean, | 'bool', | 
           if( $t == StrictDate , | 'datetime.date', | 
-            if( $t == DateTime, | 'datetime.datetime', | 
+            if( $t == DateTime || $t == Date, | 'datetime.datetime', | 
         $t.name->toOne()
   ))))));
 
