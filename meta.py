@@ -1,18 +1,21 @@
-meta/pure/metamodel
+# meta/pure/metamodel
 
 
 class PropertyOwner(PackageableElement):
 
-    def __init__(self):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
 
 
 class PackageableElement(ModelElement,Referenceable):
 
-    def __init__(self, package:Package=None):
+    def __init__(self, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], package:Package=None):
+        ModelElement.__init__(name,stereotypes,taggedValues)
+        Referenceable.__init__(referenceUsages)
         self.package = package
 
 
-class Referenceable(Any):
+class Referenceable():
 
     def __init__(self, referenceUsages:list[ReferenceUsage]=[]):
         self.referenceUsages = referenceUsages
@@ -20,23 +23,29 @@ class Referenceable(Any):
 
 class ModelElement(AnnotatedElement):
 
-    def __init__(self, name:str=None):
+    def __init__(self, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], name:str=None):
+        super().__init__(stereotypes,taggedValues)
         self.name = name
 
 
-class ReferenceUsage(Any):
+class ReferenceUsage():
 
     def __init__(self, owner:Any, propertyName:str, offset:int):
         self.owner = owner
         self.propertyName = propertyName
         self.offset = offset
 
-meta/pure/metamodel/type
+# meta/pure/metamodel/type
 
 
 class Class(Type,PropertyOwner,ElementWithConstraints,PackageableElement,Testable):
 
-    def __init__(self, properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], propertiesFromAssociations:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[], qualifiedPropertiesFromAssociations:list[QualifiedProperty]=[], typeParameters:list[TypeParameter]=[], typeVariables:list[VariableExpression]=[], multiplicityParameters:list[InstanceValue]=[]):
+    def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], constraints:list[Constraint]=[], tests:list[Test]=[], properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], propertiesFromAssociations:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[], qualifiedPropertiesFromAssociations:list[QualifiedProperty]=[], typeParameters:list[TypeParameter]=[], typeVariables:list[VariableExpression]=[], multiplicityParameters:list[InstanceValue]=[]):
+        Type.__init__(name,generalizations,specializations)
+        PropertyOwner.__init__(package,name,stereotypes,taggedValues,referenceUsages)
+        ElementWithConstraints.__init__(constraints)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
+        Testable.__init__(tests)
         self.properties = properties
         self.originalMilestonedProperties = originalMilestonedProperties
         self.propertiesFromAssociations = propertiesFromAssociations
@@ -47,10 +56,10 @@ class Class(Type,PropertyOwner,ElementWithConstraints,PackageableElement,Testabl
         self.multiplicityParameters = multiplicityParameters
 
 
-class Nil(Any):
+class Nil():
 
     def __init__(self):
-
+        pass
 
 class Any():
 
@@ -59,7 +68,7 @@ class Any():
         self.elementOverride = elementOverride
 
 
-class Type(Any):
+class Type():
 
     def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[]):
         self.name = name
@@ -69,50 +78,62 @@ class Type(Any):
 
 class DataType(Type):
 
-    def __init__(self):
+    def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[]):
+        super().__init__(name,generalizations,specializations)
 
 
 class Measure(DataType,PackageableElement):
 
-    def __init__(self, canonicalUnit:Unit=None, nonCanonicalUnits:list[Unit]=[]):
+    def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], canonicalUnit:Unit=None, nonCanonicalUnits:list[Unit]=[]):
+        DataType.__init__(name,generalizations,specializations)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.canonicalUnit = canonicalUnit
         self.nonCanonicalUnits = nonCanonicalUnits
 
 
 class Unit(DataType,Referenceable):
 
-    def __init__(self, measure:Measure, conversionFunction:FunctionDefinition=None):
+    def __init__(self, measure:Measure, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], referenceUsages:list[ReferenceUsage]=[], conversionFunction:FunctionDefinition=None):
+        DataType.__init__(name,generalizations,specializations)
+        Referenceable.__init__(referenceUsages)
         self.measure = measure
         self.conversionFunction = conversionFunction
 
 
 class PrimitiveType(DataType,PackageableElement,ElementWithConstraints):
 
-    def __init__(self, extended:bool=None, typeVariables:list[VariableExpression]=[]):
+    def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], constraints:list[Constraint]=[], extended:bool=None, typeVariables:list[VariableExpression]=[]):
+        DataType.__init__(name,generalizations,specializations)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
+        ElementWithConstraints.__init__(constraints)
         self.extended = extended
         self.typeVariables = typeVariables
 
 
 class Enumeration(DataType,PackageableElement):
 
-    def __init__(self, values):
+    def __init__(self, values, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[]):
+        DataType.__init__(name,generalizations,specializations)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.values = values
 
 
 class Enum(AnnotatedElement):
 
-    def __init__(self, name:str):
+    def __init__(self, name:str, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        super().__init__(stereotypes,taggedValues)
         self.name = name
 
 
-class ElementOverride(Any):
+class ElementOverride():
 
     def __init__(self):
-
+        pass
 
 class GetterOverride(ElementOverride):
 
     def __init__(self, getterOverrideToOne:Function=None, getterOverrideToMany:Function=None, hiddenPayload:Any=None):
+        super().__init__()
         self.getterOverrideToOne = getterOverrideToOne
         self.getterOverrideToMany = getterOverrideToMany
         self.hiddenPayload = hiddenPayload
@@ -120,7 +141,9 @@ class GetterOverride(ElementOverride):
 
 class FunctionType(Type,Referenceable):
 
-    def __init__(self, returnType:GenericType, returnMultiplicity:Multiplicity, function:list[Function]=[], parameters:list[VariableExpression]=[], typeParameters:list[TypeParameter]=[], multiplicityParameters:list[InstanceValue]=[]):
+    def __init__(self, returnType:GenericType, returnMultiplicity:Multiplicity, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], referenceUsages:list[ReferenceUsage]=[], function:list[Function]=[], parameters:list[VariableExpression]=[], typeParameters:list[TypeParameter]=[], multiplicityParameters:list[InstanceValue]=[]):
+        Type.__init__(name,generalizations,specializations)
+        Referenceable.__init__(referenceUsages)
         self.returnType = returnType
         self.returnMultiplicity = returnMultiplicity
         self.function = function
@@ -132,25 +155,31 @@ class FunctionType(Type,Referenceable):
 class ConstraintsOverride(ElementOverride):
 
     def __init__(self, constraintsManager:Function=None):
+        super().__init__()
         self.constraintsManager = constraintsManager
 
 
 class ConstraintsGetterOverride(GetterOverride,ConstraintsOverride):
 
-    def __init__(self):
+    def __init__(self, getterOverrideToOne:Function=None, getterOverrideToMany:Function=None, hiddenPayload:Any=None, constraintsManager:Function=None):
+        GetterOverride.__init__(getterOverrideToOne,getterOverrideToMany,hiddenPayload)
+        ConstraintsOverride.__init__(constraintsManager)
 
 
 class ClassProjection(Class,PackageableElement):
 
-    def __init__(self, projectionSpecification:RootRouteNode):
+    def __init__(self, projectionSpecification:RootRouteNode, properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], propertiesFromAssociations:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[], qualifiedPropertiesFromAssociations:list[QualifiedProperty]=[], typeParameters:list[TypeParameter]=[], typeVariables:list[VariableExpression]=[], multiplicityParameters:list[InstanceValue]=[], name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], constraints:list[Constraint]=[], tests:list[Test]=[]):
+        Class.__init__(properties,originalMilestonedProperties,propertiesFromAssociations,qualifiedProperties,qualifiedPropertiesFromAssociations,typeParameters,typeVariables,multiplicityParameters,name,generalizations,specializations,package,name,stereotypes,taggedValues,referenceUsages,constraints,tests)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.projectionSpecification = projectionSpecification
 
-meta/pure/metamodel/type/generics
+# meta/pure/metamodel/type/generics
 
 
 class GenericType(Referenceable):
 
-    def __init__(self, rawType:Type=None, typeParameter:TypeParameter=None, typeVariableValues:list[ValueSpecification]=[], typeArguments:list[GenericType]=[], multiplicityArguments:list[Multiplicity]=[]):
+    def __init__(self, referenceUsages:list[ReferenceUsage]=[], rawType:Type=None, typeParameter:TypeParameter=None, typeVariableValues:list[ValueSpecification]=[], typeArguments:list[GenericType]=[], multiplicityArguments:list[Multiplicity]=[]):
+        super().__init__(referenceUsages)
         self.rawType = rawType
         self.typeParameter = typeParameter
         self.typeVariableValues = typeVariableValues
@@ -158,7 +187,7 @@ class GenericType(Referenceable):
         self.multiplicityArguments = multiplicityArguments
 
 
-class TypeParameter(Any):
+class TypeParameter():
 
     def __init__(self, name:str, contravariant:bool=None, lowerBound:GenericType=None, upperBound:GenericType=None):
         self.name = name
@@ -169,21 +198,24 @@ class TypeParameter(Any):
 
 class InferredGenericType(GenericType):
 
-    def __init__(self):
+    def __init__(self, rawType:Type=None, typeParameter:TypeParameter=None, typeVariableValues:list[ValueSpecification]=[], typeArguments:list[GenericType]=[], multiplicityArguments:list[Multiplicity]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(rawType,typeParameter,typeVariableValues,typeArguments,multiplicityArguments,referenceUsages)
 
 
-meta/pure/metamodel/treepath
+# meta/pure/metamodel/treepath
 
 
 class RootRouteNode(RouteNode):
 
-    def __init__(self, owner:Any=None):
+    def __init__(self, name:str, includeAll:str, type:GenericType, children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[], stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], owner:Any=None):
+        super().__init__(name,includeAll,type,children,resolvedProperties,included,excluded,stereotypes,taggedValues)
         self.owner = owner
 
 
 class RouteNode(AnnotatedElement):
 
-    def __init__(self, name:str, includeAll:str, type:GenericType, children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[]):
+    def __init__(self, name:str, includeAll:str, type:GenericType, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[]):
+        super().__init__(stereotypes,taggedValues)
         self.name = name
         self.includeAll = includeAll
         self.type = type
@@ -195,14 +227,16 @@ class RouteNode(AnnotatedElement):
 
 class PropertyRouteNode(RouteNode):
 
-    def __init__(self, propertyName:str, root:RootRouteNode):
+    def __init__(self, name:str, includeAll:str, type:GenericType, propertyName:str, root:RootRouteNode, children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[], stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        super().__init__(name,includeAll,type,children,resolvedProperties,included,excluded,stereotypes,taggedValues)
         self.propertyName = propertyName
         self.root = root
 
 
 class RouteNodePropertyStub(AnnotatedElement):
 
-    def __init__(self, owner:RouteNode, property:list[AbstractProperty]=[], parameters:list[InstanceValue]=[]):
+    def __init__(self, owner:RouteNode, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], property:list[AbstractProperty]=[], parameters:list[InstanceValue]=[]):
+        super().__init__(stereotypes,taggedValues)
         self.owner = owner
         self.property = property
         self.parameters = parameters
@@ -210,36 +244,40 @@ class RouteNodePropertyStub(AnnotatedElement):
 
 class ExistingPropertyRouteNode(PropertyRouteNode):
 
-    def __init__(self, property:RouteNodePropertyStub):
+    def __init__(self, propertyName:str, root:RootRouteNode, name:str, includeAll:str, type:GenericType, property:RouteNodePropertyStub, children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[], stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        super().__init__(propertyName,root,name,includeAll,type,children,resolvedProperties,included,excluded,stereotypes,taggedValues)
         self.property = property
 
 
 class NewPropertyRouteNode(PropertyRouteNode):
 
-    def __init__(self, specifications:list[ValueSpecification], functionDefinition:NewPropertyRouteNodeFunctionDefinition):
+    def __init__(self, propertyName:str, root:RootRouteNode, name:str, includeAll:str, type:GenericType, specifications:list[ValueSpecification], functionDefinition:NewPropertyRouteNodeFunctionDefinition, children:list[PropertyRouteNode]=[], resolvedProperties:list[AbstractProperty]=[], included:list[RouteNodePropertyStub]=[], excluded:list[RouteNodePropertyStub]=[], stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        super().__init__(propertyName,root,name,includeAll,type,children,resolvedProperties,included,excluded,stereotypes,taggedValues)
         self.specifications = specifications
         self.functionDefinition = functionDefinition
 
 
 class NewPropertyRouteNodeFunctionDefinition(FunctionDefinition):
 
-    def __init__(self, owner:NewPropertyRouteNode):
+    def __init__(self, expressionSequence:list[ValueSpecification], owner:NewPropertyRouteNode, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(expressionSequence,name,functionName,applications,referenceUsages)
         self.owner = owner
 
 
 class PropertyPathTreeNode(TreeNode):
 
-    def __init__(self, property:AbstractProperty=None, children:list[PropertyPathTreeNode]=[]):
+    def __init__(self, childrenData:list[TreeNode]=[], property:AbstractProperty=None):
+        super().__init__(childrenData)
         self.property = property
-        self.children = children
 
 
-meta/pure/metamodel/constraint
+# meta/pure/metamodel/constraint
 
 
 class Constraint(ModelElement):
 
-    def __init__(self, functionDefinition:FunctionDefinition, owner:str=None, externalId:str=None, enforcementLevel:str=None, messageFunction:FunctionDefinition=None):
+    def __init__(self, functionDefinition:FunctionDefinition, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], owner:str=None, externalId:str=None, enforcementLevel:str=None, messageFunction:FunctionDefinition=None):
+        super().__init__(name,stereotypes,taggedValues)
         self.functionDefinition = functionDefinition
         self.owner = owner
         self.externalId = externalId
@@ -247,26 +285,24 @@ class Constraint(ModelElement):
         self.messageFunction = messageFunction
 
 
-class ValidatedInstance(Any):
+class ValidatedInstance():
 
     def __init__(self, instance:Any, results:list[ValidationResult]=[]):
         self.instance = instance
         self.results = results
 
 
-class ValidationResult(Any):
+class ValidationResult():
 
-    def __init__(self, success:bool, constraint:Constraint, enforcementLevel:EnforcementLevel, ins:ValidatedInstance, constraintId:str, message:str=None, inputValues:list[Pair]=[]):
+    def __init__(self, success:bool, constraint:Constraint, enforcementLevel:EnforcementLevel, ins:ValidatedInstance, message:str=None):
         self.success = success
         self.constraint = constraint
         self.enforcementLevel = enforcementLevel
         self.ins = ins
-        self.constraintId = constraintId
         self.message = message
-        self.inputValues = inputValues
 
 
-class ConstraintContextInformation(Any):
+class ConstraintContextInformation():
 
     def __init__(self, class:Class, constraint:Constraint, enforcementLevel:EnforcementLevel, message:str=None, messageFunction:FunctionDefinition=None):
         self.class = class
@@ -280,18 +316,20 @@ class EnforcementLevel(Enum):
     Error = auto()
     Warn = auto()
 
-meta/pure/metamodel/function
+# meta/pure/metamodel/function
 
 
 class FunctionDefinition(Function):
 
-    def __init__(self, expressionSequence:list[ValueSpecification]):
+    def __init__(self, expressionSequence:list[ValueSpecification], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(name,functionName,applications,referenceUsages)
         self.expressionSequence = expressionSequence
 
 
 class Function(Referenceable):
 
-    def __init__(self, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[]):
+    def __init__(self, referenceUsages:list[ReferenceUsage]=[], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[]):
+        super().__init__(referenceUsages)
         self.name = name
         self.functionName = functionName
         self.applications = applications
@@ -299,32 +337,40 @@ class Function(Referenceable):
 
 class PackageableFunction(PackageableElement,Function):
 
-    def __init__(self, preConstraints:list[Constraint]=[], postConstraints:list[Constraint]=[]):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], preConstraints:list[Constraint]=[], postConstraints:list[Constraint]=[]):
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
+        Function.__init__(name,functionName,applications,referenceUsages)
         self.preConstraints = preConstraints
         self.postConstraints = postConstraints
 
 
 class NativeFunction(PackageableFunction):
 
-    def __init__(self):
+    def __init__(self, preConstraints:list[Constraint]=[], postConstraints:list[Constraint]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[]):
+        super().__init__(preConstraints,postConstraints,package,name,stereotypes,taggedValues,referenceUsages,name,functionName,applications)
 
 
 class ConcreteFunctionDefinition(FunctionDefinition,PackageableFunction,Testable):
 
-    def __init__(self):
+    def __init__(self, expressionSequence:list[ValueSpecification], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[], preConstraints:list[Constraint]=[], postConstraints:list[Constraint]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], tests:list[Test]=[]):
+        FunctionDefinition.__init__(expressionSequence,name,functionName,applications,referenceUsages)
+        PackageableFunction.__init__(preConstraints,postConstraints,package,name,stereotypes,taggedValues,referenceUsages,name,functionName,applications)
+        Testable.__init__(tests)
 
 
 class LambdaFunction(FunctionDefinition):
 
-    def __init__(self, openVariables:list[str]=[]):
+    def __init__(self, expressionSequence:list[ValueSpecification], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[], openVariables:list[str]=[]):
+        super().__init__(expressionSequence,name,functionName,applications,referenceUsages)
         self.openVariables = openVariables
 
-meta/pure/metamodel/function/property
+# meta/pure/metamodel/function/property
 
 
 class Property(AbstractProperty):
 
-    def __init__(self, aggregation:AggregationKind, defaultValue:DefaultValue=None):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, owner:PropertyOwner, aggregation:AggregationKind, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[], name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], defaultValue:DefaultValue=None):
+        super().__init__(genericType,multiplicity,owner,name,functionName,applications,referenceUsages,name,stereotypes,taggedValues)
         self.aggregation = aggregation
         self.defaultValue = defaultValue
 
@@ -336,25 +382,30 @@ class AggregationKind(Enum):
 
 class QualifiedProperty(AbstractProperty,FunctionDefinition):
 
-    def __init__(self, id:str):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, owner:PropertyOwner, expressionSequence:list[ValueSpecification], id:str, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[], name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        AbstractProperty.__init__(genericType,multiplicity,owner,name,functionName,applications,referenceUsages,name,stereotypes,taggedValues)
+        FunctionDefinition.__init__(expressionSequence,name,functionName,applications,referenceUsages)
         self.id = id
 
 
 class DefaultValue(ModelElement):
 
-    def __init__(self, functionDefinition:FunctionDefinition=None):
+    def __init__(self, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], functionDefinition:FunctionDefinition=None):
+        super().__init__(name,stereotypes,taggedValues)
         self.functionDefinition = functionDefinition
 
 
 class AbstractProperty(Function,ModelElement):
 
-    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, owner:PropertyOwner):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, owner:PropertyOwner, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[], name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        Function.__init__(name,functionName,applications,referenceUsages)
+        ModelElement.__init__(name,stereotypes,taggedValues)
         self.genericType = genericType
         self.multiplicity = multiplicity
         self.owner = owner
 
 
-meta/pure/metamodel/relation
+# meta/pure/metamodel/relation
 
 
 class GenericTypeOperationType(Enum):
@@ -365,7 +416,8 @@ class GenericTypeOperationType(Enum):
 
 class GenericTypeOperation(GenericType):
 
-    def __init__(self, left:GenericType, right:GenericType, type:GenericTypeOperationType):
+    def __init__(self, left:GenericType, right:GenericType, type:GenericTypeOperationType, rawType:Type=None, typeParameter:TypeParameter=None, typeVariableValues:list[ValueSpecification]=[], typeArguments:list[GenericType]=[], multiplicityArguments:list[Multiplicity]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(rawType,typeParameter,typeVariableValues,typeArguments,multiplicityArguments,referenceUsages)
         self.left = left
         self.right = right
         self.type = type
@@ -373,53 +425,58 @@ class GenericTypeOperation(GenericType):
 
 class RelationType(Type,Referenceable):
 
-    def __init__(self, columns:list[Column]=[]):
+    def __init__(self, name:str=None, generalizations:list[Generalization]=[], specializations:list[Generalization]=[], referenceUsages:list[ReferenceUsage]=[], columns:list[Column]=[]):
+        Type.__init__(name,generalizations,specializations)
+        Referenceable.__init__(referenceUsages)
         self.columns = columns
 
 
 class Column(Function):
 
-    def __init__(self, nameWildCard:bool):
+    def __init__(self, nameWildCard:bool, name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(name,functionName,applications,referenceUsages)
         self.nameWildCard = nameWildCard
 
 
-class Relation(Any):
+class Relation():
 
     def __init__(self):
-
+        pass
 
 class RelationElementAccessor(Relation,Referenceable):
 
-    def __init__(self, sourceElement:Any):
+    def __init__(self, sourceElement:Any, referenceUsages:list[ReferenceUsage]=[]):
+        Relation.__init__()
+        Referenceable.__init__(referenceUsages)
         self.sourceElement = sourceElement
 
 
-class ColSpec(Any):
+class ColSpec():
 
     def __init__(self, name:str):
         self.name = name
 
 
-class ColSpecArray(Any):
+class ColSpecArray():
 
     def __init__(self, names:list[str]=[]):
         self.names = names
 
 
-class FuncColSpec(Any):
+class FuncColSpec():
 
     def __init__(self, name:str, function:Function):
         self.name = name
         self.function = function
 
 
-class FuncColSpecArray(Any):
+class FuncColSpecArray():
 
     def __init__(self, funcSpecs:list[FuncColSpec]=[]):
         self.funcSpecs = funcSpecs
 
 
-class AggColSpec(Any):
+class AggColSpec():
 
     def __init__(self, name:str, map:Function, reduce:Function):
         self.name = name
@@ -427,7 +484,7 @@ class AggColSpec(Any):
         self.reduce = reduce
 
 
-class AggColSpecArray(Any):
+class AggColSpecArray():
 
     def __init__(self, aggSpecs:list[AggColSpec]=[]):
         self.aggSpecs = aggSpecs
@@ -436,18 +493,20 @@ class AggColSpecArray(Any):
 class TDS(Relation):
 
     def __init__(self, csv:str):
+        super().__init__()
         self.csv = csv
 
 
 class TDSRelationAccessor(RelationElementAccessor):
 
-    def __init__(self):
+    def __init__(self, sourceElement:Any, referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(sourceElement,referenceUsages)
 
 
-meta/pure/metamodel/relationship
+# meta/pure/metamodel/relationship
 
 
-class Generalization(Any):
+class Generalization():
 
     def __init__(self, specific:Type, general:GenericType):
         self.specific = specific
@@ -456,7 +515,8 @@ class Generalization(Any):
 
 class Association(PropertyOwner):
 
-    def __init__(self, properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[]):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.properties = properties
         self.originalMilestonedProperties = originalMilestonedProperties
         self.qualifiedProperties = qualifiedProperties
@@ -464,28 +524,31 @@ class Association(PropertyOwner):
 
 class AssociationProjection(Association):
 
-    def __init__(self, projections:list[ClassProjection], projectedAssociation:Association):
+    def __init__(self, projections:list[ClassProjection], projectedAssociation:Association, properties:list[Property]=[], originalMilestonedProperties:list[Property]=[], qualifiedProperties:list[QualifiedProperty]=[], package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(properties,originalMilestonedProperties,qualifiedProperties,package,name,stereotypes,taggedValues,referenceUsages)
         self.projections = projections
         self.projectedAssociation = projectedAssociation
 
 
-meta/pure/metamodel/valuespecification
+# meta/pure/metamodel/valuespecification
 
 
 class VariableExpression(Expression):
 
-    def __init__(self, name:str, functionTypeOwner:FunctionType=None):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, name:str, usageContext:ValueSpecificationContext=None, functionTypeOwner:FunctionType=None):
+        super().__init__(genericType,multiplicity,usageContext)
         self.name = name
         self.functionTypeOwner = functionTypeOwner
 
 
 class InstanceValue(ValueSpecification):
 
-    def __init__(self, values:list[Any]=[]):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, usageContext:ValueSpecificationContext=None, values:list[Any]=[]):
+        super().__init__(genericType,multiplicity,usageContext)
         self.values = values
 
 
-class ValueSpecification(Any):
+class ValueSpecification():
 
     def __init__(self, genericType:GenericType, multiplicity:Multiplicity, usageContext:ValueSpecificationContext=None):
         self.genericType = genericType
@@ -493,7 +556,7 @@ class ValueSpecification(Any):
         self.usageContext = usageContext
 
 
-class ValueSpecificationContext(Any):
+class ValueSpecificationContext():
 
     def __init__(self, offset:int):
         self.offset = offset
@@ -501,42 +564,49 @@ class ValueSpecificationContext(Any):
 
 class Expression(ValueSpecification):
 
-    def __init__(self):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, usageContext:ValueSpecificationContext=None):
+        super().__init__(genericType,multiplicity,usageContext)
 
 
 class NonExecutableValueSpecification(ValueSpecification):
 
-    def __init__(self, values:list[Any]=[]):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, usageContext:ValueSpecificationContext=None, values:list[Any]=[]):
+        super().__init__(genericType,multiplicity,usageContext)
         self.values = values
 
 
 class ExpressionSequenceValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, functionDefinition:FunctionDefinition):
+    def __init__(self, offset:int, functionDefinition:FunctionDefinition):
+        super().__init__(offset)
         self.functionDefinition = functionDefinition
 
 
 class InstanceValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, instanceValue:InstanceValue):
+    def __init__(self, offset:int, instanceValue:InstanceValue):
+        super().__init__(offset)
         self.instanceValue = instanceValue
 
 
 class ClassConstraintValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, type:Type):
+    def __init__(self, offset:int, type:Type):
+        super().__init__(offset)
         self.type = type
 
 
 class ParameterValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, functionExpression:FunctionExpression):
+    def __init__(self, offset:int, functionExpression:FunctionExpression):
+        super().__init__(offset)
         self.functionExpression = functionExpression
 
 
 class FunctionExpression(Expression):
 
-    def __init__(self, func:Function, importGroup:ImportGroup, parametersValues:list[ValueSpecification]=[], functionName:str=None, propertyName:InstanceValue=None, qualifiedPropertyName:InstanceValue=None, originalMilestonedProperty:Function=None, originalMilestonedPropertyParametersValues:list[ValueSpecification]=[], resolvedTypeParameters:list[GenericType]=[], resolvedMultiplicityParameters:list[Multiplicity]=[]):
+    def __init__(self, genericType:GenericType, multiplicity:Multiplicity, func:Function, importGroup:ImportGroup, usageContext:ValueSpecificationContext=None, parametersValues:list[ValueSpecification]=[], functionName:str=None, propertyName:InstanceValue=None, qualifiedPropertyName:InstanceValue=None, originalMilestonedProperty:Function=None, originalMilestonedPropertyParametersValues:list[ValueSpecification]=[], resolvedTypeParameters:list[GenericType]=[], resolvedMultiplicityParameters:list[Multiplicity]=[]):
+        super().__init__(genericType,multiplicity,usageContext)
         self.func = func
         self.importGroup = importGroup
         self.parametersValues = parametersValues
@@ -551,25 +621,28 @@ class FunctionExpression(Expression):
 
 class KeyValueValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, functionExpression:FunctionExpression):
+    def __init__(self, offset:int, functionExpression:FunctionExpression):
+        super().__init__(offset)
         self.functionExpression = functionExpression
 
 
 class SimpleFunctionExpression(FunctionExpression):
 
-    def __init__(self):
+    def __init__(self, func:Function, importGroup:ImportGroup, genericType:GenericType, multiplicity:Multiplicity, parametersValues:list[ValueSpecification]=[], functionName:str=None, propertyName:InstanceValue=None, qualifiedPropertyName:InstanceValue=None, originalMilestonedProperty:Function=None, originalMilestonedPropertyParametersValues:list[ValueSpecification]=[], resolvedTypeParameters:list[GenericType]=[], resolvedMultiplicityParameters:list[Multiplicity]=[], usageContext:ValueSpecificationContext=None):
+        super().__init__(func,importGroup,genericType,multiplicity,parametersValues,functionName,propertyName,qualifiedPropertyName,originalMilestonedProperty,originalMilestonedPropertyParametersValues,resolvedTypeParameters,resolvedMultiplicityParameters,usageContext)
 
 
 class StoreValueSpecificationContext(ValueSpecificationContext):
 
-    def __init__(self, store:Store):
+    def __init__(self, offset:int, store:Store):
+        super().__init__(offset)
         self.store = store
 
 
-meta/pure/metamodel/multiplicity
+# meta/pure/metamodel/multiplicity
 
 
-class Multiplicity(Any):
+class Multiplicity():
 
     def __init__(self, lowerBound:MultiplicityValue=None, upperBound:MultiplicityValue=None, multiplicityParameter:str=None):
         self.lowerBound = lowerBound
@@ -577,7 +650,7 @@ class Multiplicity(Any):
         self.multiplicityParameter = multiplicityParameter
 
 
-class MultiplicityValue(Any):
+class MultiplicityValue():
 
     def __init__(self, value:int=None):
         self.value = value
@@ -585,19 +658,21 @@ class MultiplicityValue(Any):
 
 class PackageableMultiplicity(Multiplicity,PackageableElement):
 
-    def __init__(self):
+    def __init__(self, lowerBound:MultiplicityValue=None, upperBound:MultiplicityValue=None, multiplicityParameter:str=None, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[]):
+        Multiplicity.__init__(lowerBound,upperBound,multiplicityParameter)
+        PackageableElement.__init__(package,name,stereotypes,taggedValues,referenceUsages)
 
 
-meta/pure/metamodel/extension
+# meta/pure/metamodel/extension
 
 
-class ElementWithConstraints(Any):
+class ElementWithConstraints():
 
     def __init__(self, constraints:list[Constraint]=[]):
         self.constraints = constraints
 
 
-class ElementWithStereotypes(Any):
+class ElementWithStereotypes():
 
     def __init__(self, stereotypes:list[Stereotype]=[]):
         self.stereotypes = stereotypes
@@ -605,16 +680,17 @@ class ElementWithStereotypes(Any):
 
 class Stereotype(Annotation):
 
-    def __init__(self):
+    def __init__(self, profile:Profile, value:str, modelElements:list[AnnotatedElement]=[]):
+        super().__init__(profile,value,modelElements)
 
 
-class ElementWithTaggedValues(Any):
+class ElementWithTaggedValues():
 
     def __init__(self, taggedValues:list[TaggedValue]=[]):
         self.taggedValues = taggedValues
 
 
-class TaggedValue(Any):
+class TaggedValue():
 
     def __init__(self, tag:Tag, value:str):
         self.tag = tag
@@ -623,22 +699,26 @@ class TaggedValue(Any):
 
 class AnnotatedElement(ElementWithStereotypes,ElementWithTaggedValues):
 
-    def __init__(self):
+    def __init__(self, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[]):
+        ElementWithStereotypes.__init__(stereotypes)
+        ElementWithTaggedValues.__init__(taggedValues)
 
 
 class Profile(PackageableElement):
 
-    def __init__(self, p_stereotypes:list[Stereotype]=[], p_tags:list[Tag]=[]):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], p_stereotypes:list[Stereotype]=[], p_tags:list[Tag]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.p_stereotypes = p_stereotypes
         self.p_tags = p_tags
 
 
 class Tag(Annotation):
 
-    def __init__(self):
+    def __init__(self, profile:Profile, value:str, modelElements:list[AnnotatedElement]=[]):
+        super().__init__(profile,value,modelElements)
 
 
-class Annotation(Any):
+class Annotation():
 
     def __init__(self, profile:Profile, value:str, modelElements:list[AnnotatedElement]=[]):
         self.profile = profile
@@ -646,22 +726,23 @@ class Annotation(Any):
         self.modelElements = modelElements
 
 
-meta/pure/metamodel/import
+# meta/pure/metamodel/import
 
 
 class ImportGroup(PackageableElement):
 
-    def __init__(self, imports:list[Import]=[]):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], imports:list[Import]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.imports = imports
 
 
-class Import(Any):
+class Import():
 
     def __init__(self, path:str):
         self.path = path
 
 
-class ImportStub(Any):
+class ImportStub():
 
     def __init__(self, importGroup:ImportGroup, idOrPath:str, resolvedNode:Any=None):
         self.importGroup = importGroup
@@ -669,7 +750,7 @@ class ImportStub(Any):
         self.resolvedNode = resolvedNode
 
 
-class PropertyStub(Any):
+class PropertyStub():
 
     def __init__(self, owner:Class, propertyName:str, resolvedProperty:AbstractProperty=None):
         self.owner = owner
@@ -677,7 +758,7 @@ class PropertyStub(Any):
         self.resolvedProperty = resolvedProperty
 
 
-class EnumStub(Any):
+class EnumStub():
 
     def __init__(self, enumeration:Enumeration, enumName:str, resolvedEnum:Enum=None):
         self.enumeration = enumeration
@@ -685,50 +766,55 @@ class EnumStub(Any):
         self.resolvedEnum = resolvedEnum
 
 
-meta/pure/metamodel/path
+# meta/pure/metamodel/path
 
 
 class Path(Function):
 
-    def __init__(self, start:GenericType, path:list[PathElement]):
+    def __init__(self, start:GenericType, path:list[PathElement], name:str=None, functionName:str=None, applications:list[FunctionExpression]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(name,functionName,applications,referenceUsages)
         self.start = start
         self.path = path
 
 
-class PathElement(Any):
+class PathElement():
 
     def __init__(self):
-
+        pass
 
 class CastPathElement(PathElement):
 
     def __init__(self, type:GenericType):
+        super().__init__()
         self.type = type
 
 
 class PropertyPathElement(PathElement):
 
     def __init__(self, property:AbstractProperty, parameters:list[ValueSpecification]=[]):
+        super().__init__()
         self.property = property
         self.parameters = parameters
 
 
-meta/pure/metamodel/text
+# meta/pure/metamodel/text
 
 
 class Text(PackageableElement):
 
-    def __init__(self, content:str, type:str=None):
+    def __init__(self, content:str, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], type:str=None):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.content = content
         self.type = type
 
 
-meta/pure/metamodel/diagram
+# meta/pure/metamodel/diagram
 
 
 class Diagram(PackageableElement):
 
-    def __init__(self, classViews:list[ClassView]=[], associationViews:list[AssociationView]=[], generalizationViews:list[GeneralizationView]=[], propertyViews:list[PropertyView]=[]):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], classViews:list[ClassView]=[], associationViews:list[AssociationView]=[], generalizationViews:list[GeneralizationView]=[], propertyViews:list[PropertyView]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.classViews = classViews
         self.associationViews = associationViews
         self.generalizationViews = generalizationViews
@@ -737,27 +823,31 @@ class Diagram(PackageableElement):
 
 class AssociationView(PropertyHolderView):
 
-    def __init__(self, association:Association):
+    def __init__(self, property:AbstractProperty, from:RelationshipViewEnd, to:RelationshipViewEnd, association:Association, path:list[Point]=[]):
+        super().__init__(property,from,to,path)
         self.association = association
 
 
 class PropertyView(PropertyHolderView):
 
-    def __init__(self):
+    def __init__(self, property:AbstractProperty, from:RelationshipViewEnd, to:RelationshipViewEnd, path:list[Point]=[]):
+        super().__init__(property,from,to,path)
 
 
 class GeneralizationView(RelationshipView):
 
-    def __init__(self):
+    def __init__(self, from:RelationshipViewEnd, to:RelationshipViewEnd, path:list[Point]=[]):
+        super().__init__(from,to,path)
 
 
 class PropertyHolderView(RelationshipView):
 
-    def __init__(self, property:AbstractProperty):
+    def __init__(self, from:RelationshipViewEnd, to:RelationshipViewEnd, property:AbstractProperty, path:list[Point]=[]):
+        super().__init__(from,to,path)
         self.property = property
 
 
-class RelationshipView(Any):
+class RelationshipView():
 
     def __init__(self, from:RelationshipViewEnd, to:RelationshipViewEnd, path:list[Point]=[]):
         self.from = from
@@ -765,7 +855,7 @@ class RelationshipView(Any):
         self.path = path
 
 
-class RelationshipViewEnd(Any):
+class RelationshipViewEnd():
 
     def __init__(self, classView:ClassView):
         self.classView = classView
@@ -773,7 +863,8 @@ class RelationshipViewEnd(Any):
 
 class ClassView(PositionedRectangle):
 
-    def __init__(self, class:Class, id:str, hideProperties:bool=None, hideTaggedValues:bool=None, hideStereotypes:bool=None):
+    def __init__(self, position:Point, rectangle:Rectangle, class:Class, id:str, hideProperties:bool=None, hideTaggedValues:bool=None, hideStereotypes:bool=None):
+        super().__init__(position,rectangle)
         self.class = class
         self.id = id
         self.hideProperties = hideProperties
@@ -781,32 +872,32 @@ class ClassView(PositionedRectangle):
         self.hideStereotypes = hideStereotypes
 
 
-class Point(Any):
+class Point():
 
     def __init__(self, x:Number, y:Number):
         self.x = x
         self.y = y
 
 
-class Rectangle(Any):
+class Rectangle():
 
     def __init__(self, width:Number, height:Number):
         self.width = width
         self.height = height
 
 
-class PositionedRectangle(Any):
+class PositionedRectangle():
 
     def __init__(self, position:Point, rectangle:Rectangle):
         self.position = position
         self.rectangle = rectangle
 
-meta/pure/metamodel/diagram/analytics
+# meta/pure/metamodel/diagram/analytics
 
-meta/pure/metamodel/diagram/analytics/modelCoverage
+# meta/pure/metamodel/diagram/analytics/modelCoverage
 
 
-class DiagramModelCoverageAnalysisResult(Any):
+class DiagramModelCoverageAnalysisResult():
 
     def __init__(self, classes:list[Class]=[], enumerations:list[Enumeration]=[], associations:list[Association]=[], profiles:list[Profile]=[]):
         self.classes = classes
@@ -815,29 +906,29 @@ class DiagramModelCoverageAnalysisResult(Any):
         self.profiles = profiles
 
 
-meta/pure/metamodel/serialization
+# meta/pure/metamodel/serialization
 
-meta/pure/metamodel/serialization/grammar
+# meta/pure/metamodel/serialization/grammar
 
 
-class Configuration(Any):
+class Configuration():
 
     def __init__(self, fullPath:bool, extensions:list[GrammarExtension]=[]):
         self.fullPath = fullPath
         self.extensions = extensions
 
 
-class GrammarExtension(Any):
+class GrammarExtension():
 
     def __init__(self, extraConnectionHandlers:list[Function]=[], extraInstanceValueHandlers:list[Function]=[]):
         self.extraConnectionHandlers = extraConnectionHandlers
         self.extraInstanceValueHandlers = extraInstanceValueHandlers
 
 
-meta/pure/metamodel/serialization/json
+# meta/pure/metamodel/serialization/json
 
 
-class ShallowPackageableElement(Any):
+class ShallowPackageableElement():
 
     def __init__(self, package:str, name:str, sourceInformation:SourceInformation):
         self.package = package
@@ -845,20 +936,20 @@ class ShallowPackageableElement(Any):
         self.sourceInformation = sourceInformation
 
 
-meta/pure/metamodel/tests
+# meta/pure/metamodel/tests
 
-meta/pure/metamodel/tests/namespace
-
-
-meta/pure/metamodel/tests/lambda
+# meta/pure/metamodel/tests/namespace
 
 
-class Person(Any):
+# meta/pure/metamodel/tests/lambda
+
+
+class Person():
 
     def __init__(self):
+        pass
 
-
-class Person2(Any):
+class Person2():
 
     def __init__(self, name:str):
         self.name = name
@@ -867,60 +958,63 @@ class Person2(Any):
 class Employee(Person):
 
     def __init__(self):
+        super().__init__()
 
 
-class C(Any):
+class C():
 
     def __init__(self):
+        pass
 
-
-class Firm(Any):
+class Firm():
 
     def __init__(self, prop:str):
         self.prop = prop
 
 
-meta/pure/metamodel/tests/inference
+# meta/pure/metamodel/tests/inference
 
 
-class A(Any):
+class A():
 
     def __init__(self, val):
         self.val = val
 
 
-meta/pure/metamodel/tests/functionmatching
+# meta/pure/metamodel/tests/functionmatching
 
 
-meta/pure/metamodel/tests/lambdaopenvariables
+# meta/pure/metamodel/tests/lambdaopenvariables
 
 
-class Person(Any):
+class Person():
 
     def __init__(self, lastName:str):
         self.lastName = lastName
 
 
-class Firm(Any):
+class Firm():
 
     def __init__(self, employees:list[Person]=[]):
         self.employees = employees
 
 
-meta/pure/metamodel/section
+# meta/pure/metamodel/section
 
 
 class SectionIndex(PackageableElement):
 
-    def __init__(self):
+    def __init__(self, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[]):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
 
 
-meta/pure/metamodel/dataSpace
+# meta/pure/metamodel/dataSpace
 
 
 class DataSpace(PackageableElement):
 
-    def __init__(self, executionContexts:list[DataSpaceExecutionContext], defaultExecutionContext:DataSpaceExecutionContext, title:str=None, description:str=None, diagrams:list[DataSpaceDiagram]=[], elements:list[PackageableElement]=[], executables:list[DataSpaceExecutable]=[], supportInfo:DataSpaceSupportInfo=None):
+    def __init__(self, executionContexts:list[DataSpaceExecutionContext], defaultExecutionContext:DataSpaceExecutionContext, package:Package=None, name:str=None, stereotypes:list[Stereotype]=[], taggedValues:list[TaggedValue]=[], referenceUsages:list[ReferenceUsage]=[], title:str=None, description:str=None, diagrams:list[DataSpaceDiagram]=[], elements:list[PackageableElement]=[], executables:list[DataSpaceExecutable]=[], supportInfo:DataSpaceSupportInfo=None):
+        super().__init__(package,name,stereotypes,taggedValues,referenceUsages)
         self.executionContexts = executionContexts
         self.defaultExecutionContext = defaultExecutionContext
         self.title = title
@@ -931,7 +1025,7 @@ class DataSpace(PackageableElement):
         self.supportInfo = supportInfo
 
 
-class DataSpaceExecutionContext(Any):
+class DataSpaceExecutionContext():
 
     def __init__(self, name:str, mapping:Mapping, defaultRuntime:PackageableRuntime, title:str=None, description:str=None, testData:EmbeddedData=None):
         self.name = name
@@ -942,7 +1036,7 @@ class DataSpaceExecutionContext(Any):
         self.testData = testData
 
 
-class DataSpaceDiagram(Any):
+class DataSpaceDiagram():
 
     def __init__(self, title:str, diagram:Diagram, description:str=None):
         self.title = title
@@ -950,7 +1044,7 @@ class DataSpaceDiagram(Any):
         self.description = description
 
 
-class DataSpaceExecutable(Any):
+class DataSpaceExecutable():
 
     def __init__(self, title:str, id:str, description:str=None, executionContextKey:str=None):
         self.title = title
@@ -961,17 +1055,19 @@ class DataSpaceExecutable(Any):
 
 class DataSpacePackageableElementExecutable(DataSpaceExecutable):
 
-    def __init__(self, executable:PackageableElement):
+    def __init__(self, title:str, id:str, executable:PackageableElement, description:str=None, executionContextKey:str=None):
+        super().__init__(title,id,description,executionContextKey)
         self.executable = executable
 
 
 class DataSpaceTemplateExecutable(DataSpaceExecutable):
 
-    def __init__(self, query:FunctionDefinition):
+    def __init__(self, title:str, id:str, query:FunctionDefinition, description:str=None, executionContextKey:str=None):
+        super().__init__(title,id,description,executionContextKey)
         self.query = query
 
 
-class DataSpaceSupportInfo(Any):
+class DataSpaceSupportInfo():
 
     def __init__(self, documentationUrl:str=None):
         self.documentationUrl = documentationUrl
@@ -979,25 +1075,27 @@ class DataSpaceSupportInfo(Any):
 
 class DataSpaceSupportEmail(DataSpaceSupportInfo):
 
-    def __init__(self, address:str):
+    def __init__(self, address:str, documentationUrl:str=None):
+        super().__init__(documentationUrl)
         self.address = address
 
 
 class DataSpaceSupportCombinedInfo(DataSpaceSupportInfo):
 
-    def __init__(self, emails:list[str]=[], website:str=None, faqUrl:str=None, supportUrl:str=None):
+    def __init__(self, documentationUrl:str=None, emails:list[str]=[], website:str=None, faqUrl:str=None, supportUrl:str=None):
+        super().__init__(documentationUrl)
         self.emails = emails
         self.website = website
         self.faqUrl = faqUrl
         self.supportUrl = supportUrl
 
-meta/pure/metamodel/dataSpace/profiles
+# meta/pure/metamodel/dataSpace/profiles
 
 
-meta/pure/metamodel/dataSpace/analytics
+# meta/pure/metamodel/dataSpace/analytics
 
 
-class DataSpaceAnalysisResult(Any):
+class DataSpaceAnalysisResult():
 
     def __init__(self, diagramModels:DiagramModelCoverageAnalysisResult, executionContexts:list[DataSpaceExecutionContextAnalysisResult]=[], elementDocs:list[DataSpaceModelDocumentationEntry]=[]):
         self.diagramModels = diagramModels
@@ -1005,13 +1103,13 @@ class DataSpaceAnalysisResult(Any):
         self.elementDocs = elementDocs
 
 
-class DataSpaceCoverageAnalysisResult(Any):
+class DataSpaceCoverageAnalysisResult():
 
     def __init__(self, executionContexts:list[DataSpaceExecutionContextAnalysisResult]=[]):
         self.executionContexts = executionContexts
 
 
-class DataSpaceExecutionContextAnalysisResult(Any):
+class DataSpaceExecutionContextAnalysisResult():
 
     def __init__(self, name:str, mappingCoverage:MappingModelCoverageAnalysisResult, compatibleRuntimes:list[PackageableRuntime]=[]):
         self.name = name
@@ -1019,7 +1117,7 @@ class DataSpaceExecutionContextAnalysisResult(Any):
         self.compatibleRuntimes = compatibleRuntimes
 
 
-class DataSpaceBasicDocumentationEntry(Any):
+class DataSpaceBasicDocumentationEntry():
 
     def __init__(self, name:str, docs:list[str]=[]):
         self.name = name
@@ -1028,7 +1126,8 @@ class DataSpaceBasicDocumentationEntry(Any):
 
 class DataSpacePropertyDocumentationEntry(DataSpaceBasicDocumentationEntry):
 
-    def __init__(self, multiplicity:Multiplicity, milestoning:str=None, type:str=None):
+    def __init__(self, name:str, multiplicity:Multiplicity, docs:list[str]=[], milestoning:str=None, type:str=None):
+        super().__init__(name,docs)
         self.multiplicity = multiplicity
         self.milestoning = milestoning
         self.type = type
@@ -1036,25 +1135,29 @@ class DataSpacePropertyDocumentationEntry(DataSpaceBasicDocumentationEntry):
 
 class DataSpaceModelDocumentationEntry(DataSpaceBasicDocumentationEntry):
 
-    def __init__(self, element:PackageableElement, path:str):
+    def __init__(self, name:str, element:PackageableElement, path:str, docs:list[str]=[]):
+        super().__init__(name,docs)
         self.element = element
         self.path = path
 
 
 class DataSpaceClassDocumentationEntry(DataSpaceModelDocumentationEntry):
 
-    def __init__(self, properties:list[DataSpacePropertyDocumentationEntry]=[], milestoning:str=None):
+    def __init__(self, element:PackageableElement, path:str, name:str, docs:list[str]=[], properties:list[DataSpacePropertyDocumentationEntry]=[], milestoning:str=None):
+        super().__init__(element,path,name,docs)
         self.properties = properties
         self.milestoning = milestoning
 
 
 class DataSpaceEnumerationDocumentationEntry(DataSpaceModelDocumentationEntry):
 
-    def __init__(self, enumValues:list[DataSpaceBasicDocumentationEntry]=[]):
+    def __init__(self, element:PackageableElement, path:str, name:str, docs:list[str]=[], enumValues:list[DataSpaceBasicDocumentationEntry]=[]):
+        super().__init__(element,path,name,docs)
         self.enumValues = enumValues
 
 
 class DataSpaceAssociationDocumentationEntry(DataSpaceModelDocumentationEntry):
 
-    def __init__(self, properties:list[DataSpacePropertyDocumentationEntry]=[]):
+    def __init__(self, element:PackageableElement, path:str, name:str, docs:list[str]=[], properties:list[DataSpacePropertyDocumentationEntry]=[]):
+        super().__init__(element,path,name,docs)
         self.properties = properties
