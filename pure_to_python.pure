@@ -1,15 +1,33 @@
 function go():Any[*]
 {
-  print('ok', 1);
+  //print('ok', 1);
   //meta::relational::functions::sqlQueryToString::oracle::tests::testConcat();
   //print(meta::pure::metamodel->meta::json::toJSON());
 
   //meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::pure::metamodel::serialization::json::packageableElementToJSON()->meta::json::toPrettyJSONString()));
-  meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::json::toJSONElement()->meta::json::toPrettyJSONString()));
+  //meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::json::toJSONElement()->meta::json::toPrettyJSONString()));
 
   //meta::pure::metamodel->getAllPackageElements(true)->map(e | print($e->meta::external::language::python::serialization::toString()));
 
-  print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+  //print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+
+  // print(Package->meta::external::language::rust::serialization::toString()
+  //       + Number->meta::external::language::rust::serialization::toString()
+  //       + meta::pure::store::Store->meta::external::language::rust::serialization::toString()
+  //       + TreeNode->meta::external::language::rust::serialization::toString()
+  //       + meta::pure::metamodel->meta::external::language::rust::serialization::packageToString(true, []));
+
+
+  //print(Class->meta::external::language::python::serialization::inheritedProperties().name);
+
+  //print(Class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne()))->removeDuplicates().name);
+  //print(Class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne()))->removeDuplicates().owner.name);
+
+
+  print('# ' + Package->elementToPath('/') + '\n' + Package->meta::external::language::python::serialization::toString() +
+        '# ' + meta::pure::store::Store->elementToPath('/') + '\n' + meta::pure::store::Store->meta::external::language::python::serialization::toString() +
+        '# ' + TreeNode->elementToPath('/') + '\n' + TreeNode->meta::external::language::python::serialization::toString()
+        + meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
 
   //print(meta::pure::mapping->meta::external::language::python::serialization::packageToString(false, []));
 
@@ -28,25 +46,33 @@ function go():Any[*]
 
 
 
-function meta::external::language::python::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*]):String[0..1]
+function meta::external::language::python::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*]):String[1]
 {
   let a =  $p->getAllPackageElements(false)->partition(e | $e->type() == Package);
   let packages = $a.first;
   let others = $a.second;
-  let s = '# ' + $p->elementToPath('/') + '\n\n' + $others.values->map(e | $e->meta::external::language::python::serialization::toString())->joinStrings();
+
+  //if $a is equal to $b the result is 0, otherwise if $a comes before $b the result is negative, otherwise the result is positive
+  //Sort these in the order they need to by in the Python file so that types are defined before they are used
+  let sortedOthers = $others.values->sort({e1, e2 | if($e1->type() == Enumeration, | if($e2->type() == Enumeration, | 0, | -1),
+                                                        | if($e2->type() == Enumeration, | 1 , 
+                                                                                         | if ($e2->instanceOf(Class) && $e1->in($e2->cast(@Class<Any>).generalizations.general.rawType), | -1 
+                                                                                                            , | if ($e1->instanceOf(Class) && $e2->in($e1->cast(@Class<Any>).generalizations.general.rawType), | 1 , | 0))))
+                                                                  });
+  let s = '# ' + $p->elementToPath('/') + '\n\n' + $sortedOthers->map(e | $e->meta::external::language::python::serialization::toString())->joinStrings();
 
   if($recursive, | $s + $packages.values->map(p | $p->cast(@Package)->meta::external::language::python::serialization::packageToString($recursive, $exclusions))->joinStrings('\n'), | $s);
 }
 
 
-function meta::external::language::python::serialization::toString(pe:PackageableElement[1]):String[0..1]
+function meta::external::language::python::serialization::toString(pe:PackageableElement[1]):String[1]
 { 
   $pe->match([c:Class<Any>[1] | meta::external::language::python::serialization::classToString($c),
             e:Enumeration<Any>[1] | meta::external::language::python::serialization::enumerationToString($e),
             a:Any[1] | ''])
 }
 
-function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1]):String[0..1]
+function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1]):String[1]
 {
   //Put mandatory properties first
   let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations)->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
@@ -63,23 +89,24 @@ function meta::external::language::python::serialization::classToString(clazz:Cl
   '\nclass ' + $clazz.name->toOne() + '(' + $genz.name->joinStrings(',') + '):\n' +
   $docs + 
   '\n' +
-  '    def __init__(self' + if($propsWithInheritedProps->isEmpty(), | '' , | $propsWithInheritedProps->map(p | $p.name->toOne() + if($p.genericType.rawType->isNotEmpty(), | 
+  '    def __init__(self' + if($propsWithInheritedProps->isEmpty(), | '' , | $propsWithInheritedProps->map(p | meta::external::language::python::serialization::propertyName($p) + if($p.genericType.rawType->isNotEmpty(), | 
               let tp = meta::external::language::python::serialization::convertType($p.genericType);
               ':' 
               + if($p.multiplicity->isToMany(), 
                     | 'list[' + $tp + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
                     | $tp + if($p.multiplicity->getLowerBound() == 0, | '=None', | ''));, | '')
-              )->joinStrings(', ', ', ', '')) + '):\n'  + 
+              )->joinStrings(', ', ',\n                 ', '')) + '):\n'  + 
           if($genz->isEmpty(), | ''
-                             , | if($genz->size() == 1, | '        super().__init__(' + $inheritedProps.name->joinStrings(',') + ')\n'
+                             , | if($genz->size() == 1, | '        super().__init__(' + $inheritedProps->map(p | meta::external::language::python::serialization::propertyName($p))->joinStrings(',') + ')\n'
                                                       , | $genz->map(g | '        ' + $g.name->toOne() + '.__init__(' + $g->cast(@Class<Any>)->hierarchicalProperties()->concatenate($g->cast(@Class<Any>)->hierarchicalPropertiesFromAssociations())
                                                                                                                  ->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) }).name->joinStrings(',') + ')\n')->joinStrings())) +
-        $allProps.name->map(n | '        self.' + $n + ' = ' + $n + '\n')->joinStrings() +
+        $allProps->map(p | let n = meta::external::language::python::serialization::propertyName($p); 
+                            '        self.' + $n + ' = ' + $n + '\n'; )->joinStrings() +
         if($propsWithInheritedProps->isEmpty() && $genz->isEmpty(), | '        pass', | '') +
   '\n';
 }
 
-function meta::external::language::python::serialization::enumerationToString(e:Enumeration<Any>[1]):String[0..1]
+function meta::external::language::python::serialization::enumerationToString(e:Enumeration<Any>[1]):String[1]
 {
   let docs = if( $e->meta::pure::functions::doc::hasDoc(), | '    """' + $e->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
   '\nclass ' + $e->enumName() + '(Enum):\n' + 
@@ -92,7 +119,8 @@ function meta::external::language::python::serialization::inheritedProperties(cl
 {
    if($class==Any,
       | [],
-      | $class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne())->concatenate(hierarchicalPropertiesFromAssociations($g.general.rawType->cast(@Class<Any>)->toOne())))->removeDuplicates()
+      | $class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne())->concatenate(hierarchicalPropertiesFromAssociations($g.general.rawType->cast(@Class<Any>)->toOne())))
+                              ->removeDuplicates( {p1, p2 | $p1.name == $p2.name})
    );
 }
 
@@ -109,11 +137,22 @@ function meta::external::language::python::serialization::convertType(gt:Generic
   
   if( $t == Integer, | 'int', | 
     if( $t == String, | 'str', |
-      if( $t == Float, | 'float', | 
+      if( $t == Float || $t == Number, | 'float', |  //recommendation for number is to use float because it can take an int, could also use union type
         if( $t == Boolean, | 'bool', | 
           if( $t == StrictDate , | 'datetime.date', | 
             if( $t == DateTime || $t == Date, | 'datetime.datetime', | 
         $t.name->toOne()
   ))))));
 
+}
+
+function meta::external::language::python::serialization::propertyName(property:AbstractProperty<Any>[1]):String[1]
+{
+  $property.name->toOne()->meta::external::language::python::serialization::escapeKeywords()
+    
+}
+
+function meta::external::language::python::serialization::escapeKeywords(value:String[1]):String[1]
+{
+  if($value->in(['class', 'from']), | $value + '_', | $value )
 }
