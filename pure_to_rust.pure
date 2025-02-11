@@ -1,3 +1,52 @@
+function go():Any[*]
+{
+  //print('ok', 1);
+  //meta::relational::functions::sqlQueryToString::oracle::tests::testConcat();
+  //print(meta::pure::metamodel->meta::json::toJSON());
+
+  //meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::pure::metamodel::serialization::json::packageableElementToJSON()->meta::json::toPrettyJSONString()));
+  //meta::pure::metamodel::type->getAllPackageElements(false)->map(e | print($e->meta::json::toJSONElement()->meta::json::toPrettyJSONString()));
+
+  //meta::pure::metamodel->getAllPackageElements(true)->map(e | print($e->meta::external::language::python::serialization::toString()));
+
+  //print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+
+
+
+  print('// ' + Package->elementToPath('/') + '\n' + Package->meta::external::language::rust::serialization::toString() +
+        '// ' + meta::pure::store::Store->elementToPath('/') + '\n' + meta::pure::store::Store->meta::external::language::rust::serialization::toString() +
+        '// ' + TreeNode->elementToPath('/') + '\n' + TreeNode->meta::external::language::rust::serialization::toString() +
+        '// ' + meta::pure::test::Test->elementToPath('/') + '\n' + meta::pure::test::Test->meta::external::language::rust::serialization::toString() +
+        '// ' + meta::pure::test::Testable->elementToPath('/') + '\n' + meta::pure::test::Testable->meta::external::language::rust::serialization::toString() +
+        '// ' + SourceInformation->elementToPath('/') + '\n' + SourceInformation->meta::external::language::rust::serialization::toString()
+        + meta::pure::metamodel->meta::external::language::rust::serialization::packageToString(true, []));
+
+  //print(Class->meta::external::language::python::serialization::inheritedProperties().name);
+
+  //print(Class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne()))->removeDuplicates().name);
+  //print(Class.generalizations->map(g| hierarchicalProperties($g.general.rawType->cast(@Class<Any>)->toOne()))->removeDuplicates().owner.name);
+
+
+  // print('# ' + Package->elementToPath('/') + '\n' + Package->meta::external::language::python::serialization::toString() +
+  //       '# ' + meta::pure::store::Store->elementToPath('/') + '\n' + meta::pure::store::Store->meta::external::language::python::serialization::toString() +
+  //       '# ' + TreeNode->elementToPath('/') + '\n' + TreeNode->meta::external::language::python::serialization::toString()
+  //       + meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+
+  //print(meta::pure::mapping->meta::external::language::python::serialization::packageToString(false, []));
+
+  //print(meta::relational::mapping->meta::external::language::python::serialization::packageToString(true, []));
+
+  //print(meta::relational::metamodel->meta::external::language::python::serialization::packageToString(true, []));
+  
+
+
+  //print(meta::pure::functions::meta::tests::isAbstract->meta::external::language::python::serialization::packageToString(true, []));
+
+  //print(meta::pure::metamodel::relationship::Generalization);
+
+  //print(meta::pure::metamodel::serialization::json::packageableElementToJSON(meta::pure::metamodel.children));
+}
+
 ////
 ////RUST
 ////
@@ -24,7 +73,7 @@ function meta::external::language::rust::serialization::classToString(clazz:Clas
 {
   //Put mandatory properties first
   let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations);
-  let allPropsWithInheritedProps = $clazz->hierarchicalProperties()->concatenate($clazz->hierarchicalPropertiesFromAssociations())->removeDuplicates();
+  let allPropsWithInheritedProps = $clazz->hierarchicalProperties()->concatenate($clazz->hierarchicalPropertiesFromAssociations())->removeDuplicates({p1, p2 | $p1.name == $p2.name});
 
   let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
 
@@ -47,10 +96,10 @@ function meta::external::language::rust::serialization::classToString(clazz:Clas
 
   let trait = '\npub trait ' + $clazz.name->toOne() + ' {\n' +
         $allProps->map(p | '    fn ' + meta::external::language::rust::serialization::propertyName($p) + '(&self) -> ' + if($p.genericType.rawType->isNotEmpty()
-              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, false);
+              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, true);
                   if($p.multiplicity->isToMany(), 
-                    | 'Vec<' + $tp + '>', 
-                    | if($p.multiplicity->getLowerBound() == 0, | 'Option<' + $tp + '>', | $tp));
+                    | '&Vec<' + $tp + '>', 
+                    | if($p.multiplicity->getLowerBound() == 0, | '&Option<' + $tp + '>', | '&' + $tp));
               , | '')  + ';\n'
             )->joinStrings() +
   '}\n';
@@ -68,10 +117,10 @@ function meta::external::language::rust::serialization::createImpl(trait:Class<A
         $allProps->map(p | 
               let pn = meta::external::language::rust::serialization::propertyName($p);
               '    fn ' + $pn + '(&self) -> ' + if($p.genericType.rawType->isNotEmpty()
-              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, false);
+              , | let tp = meta::external::language::rust::serialization::convertType($p.genericType, true);
                   if($p.multiplicity->isToMany(), 
-                    | 'Vec<' + $tp + '>', 
-                    | if($p.multiplicity->getLowerBound() == 0, | 'Option<' + $tp + '>', | $tp)
+                    | '&Vec<' + $tp + '>', 
+                    | if($p.multiplicity->getLowerBound() == 0, | '&Option<' + $tp + '>', | '&' + $tp)
                       );
               , | '')  + ' {\n' +
               '        &self.' + $pn + '\n' +
@@ -95,7 +144,7 @@ function meta::external::language::rust::serialization::convertType(gt:GenericTy
   
   if( $t == Integer, | 'i64', | 
     if( $t == String, | if( $owned, | 'String', | '&str' ), | 
-      if( $t == Float, | 'f64', | 
+      if( $t == Float || $t == Number, | 'f64', |  //Could use num trait crate for number, but seems overkill for now
         if( $t == Boolean, | 'bool', | 
           if( $t == StrictDate , | 'chrono::DateTime', | 
             if( $t == DateTime || $t == Date, | 'chrono::DateTime', | 
