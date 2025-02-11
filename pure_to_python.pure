@@ -11,12 +11,15 @@ function go():Any[*]
 
   //print(meta::pure::metamodel->meta::external::language::python::serialization::packageToString(true, []));
 
-  // print(Package->meta::external::language::rust::serialization::toString()
-  //       + Number->meta::external::language::rust::serialization::toString()
-  //       + meta::pure::store::Store->meta::external::language::rust::serialization::toString()
-  //       + TreeNode->meta::external::language::rust::serialization::toString()
-  //       + meta::pure::metamodel->meta::external::language::rust::serialization::packageToString(true, []));
 
+
+  // print('// ' + Package->elementToPath('/') + '\n' + Package->meta::external::language::rust::serialization::toString() +
+  //       '// ' + meta::pure::store::Store->elementToPath('/') + '\n' + meta::pure::store::Store->meta::external::language::rust::serialization::toString() +
+  //       '// ' + TreeNode->elementToPath('/') + '\n' + TreeNode->meta::external::language::rust::serialization::toString() +
+  //       '// ' + meta::pure::test::Test->elementToPath('/') + '\n' + meta::pure::test::Test->meta::external::language::rust::serialization::toString() +
+  //       '// ' + meta::pure::test::Testable->elementToPath('/') + '\n' + meta::pure::test::Testable->meta::external::language::rust::serialization::toString() +
+  //       '// ' + SourceInformation->elementToPath('/') + '\n' + SourceInformation->meta::external::language::rust::serialization::toString()
+  //       + meta::pure::metamodel->meta::external::language::rust::serialization::packageToString(true, []));
 
   //print(Class->meta::external::language::python::serialization::inheritedProperties().name);
 
@@ -93,12 +96,12 @@ function meta::external::language::python::serialization::classToString(clazz:Cl
               let tp = meta::external::language::python::serialization::convertType($p.genericType);
               ':' 
               + if($p.multiplicity->isToMany(), 
-                    | 'list[' + $tp + ']' + if($p.multiplicity->getLowerBound() == 0, | '=[]', | ''), 
+                    | 'list[' + $tp + ']' + if($p.multiplicity->getLowerBound() == 0, | '=None', | ''), 
                     | $tp + if($p.multiplicity->getLowerBound() == 0, | '=None', | ''));, | '')
               )->joinStrings(', ', ',\n                 ', '')) + '):\n'  + 
           if($genz->isEmpty(), | ''
                              , | if($genz->size() == 1, | '        super().__init__(' + $inheritedProps->map(p | meta::external::language::python::serialization::propertyName($p))->joinStrings(',') + ')\n'
-                                                      , | $genz->map(g | '        ' + $g.name->toOne() + '.__init__(' + $g->cast(@Class<Any>)->hierarchicalProperties()->concatenate($g->cast(@Class<Any>)->hierarchicalPropertiesFromAssociations())
+                                                      , | $genz->map(g | '        ' + $g.name->toOne() + '.__init__(self,' + $g->cast(@Class<Any>)->hierarchicalProperties()->concatenate($g->cast(@Class<Any>)->hierarchicalPropertiesFromAssociations())
                                                                                                                  ->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) }).name->joinStrings(',') + ')\n')->joinStrings())) +
         $allProps->map(p | let n = meta::external::language::python::serialization::propertyName($p); 
                             '        self.' + $n + ' = ' + $n + '\n'; )->joinStrings() +
@@ -141,15 +144,15 @@ function meta::external::language::python::serialization::convertType(gt:Generic
         if( $t == Boolean, | 'bool', | 
           if( $t == StrictDate , | 'datetime.date', | 
             if( $t == DateTime || $t == Date, | 'datetime.datetime', | 
-        $t.name->toOne()
+        '"' + $t.name->toOne() + '"'
   ))))));
 
 }
 
 function meta::external::language::python::serialization::propertyName(property:AbstractProperty<Any>[1]):String[1]
 {
-  $property.name->toOne()->meta::external::language::python::serialization::escapeKeywords()
-    
+  $property.name->toOne()->meta::pure::functions::string::splitOnCamelCase()->joinStrings('_')->toLower()
+    ->meta::external::language::python::serialization::escapeKeywords()    
 }
 
 function meta::external::language::python::serialization::escapeKeywords(value:String[1]):String[1]
