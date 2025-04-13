@@ -52,7 +52,30 @@ function go():Any[*]
 
 
 
+Enum meta::external::language::python::serialization::PythonClassGenerator
+{
+  NATIVE,
+  DATA_CLASSES,
+  PYDANTIC
+}
+
+
+Class meta::external::language::python::serialization::Config
+{
+  baseGeneratorType:meta::external::language::python::serialization::PythonClassGenerator[1];
+}
+
+function meta::external::language::python::serialization::defaultConfig():meta::external::language::python::serialization::Config[1]
+{
+  ^meta::external::language::python::serialization::Config(baseGeneratorType=meta::external::language::python::serialization::PythonClassGenerator.NATIVE)
+}
+
 function meta::external::language::python::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*]):String[1]
+{
+  meta::external::language::python::serialization::packageToString($p,$recursive, $exclusions, meta::external::language::python::serialization::defaultConfig())
+}
+
+function meta::external::language::python::serialization::packageToString(p:Package[1],recursive:Boolean[1], exclusions:String[*], config:meta::external::language::python::serialization::Config[1]):String[1]
 {
   let a =  $p->getAllPackageElements(false)->partition(e | $e->type() == Package);
   let packages = $a.first;
@@ -70,31 +93,47 @@ function meta::external::language::python::serialization::packageToString(p:Pack
   if($recursive, | $s + $packages.values->map(p | $p->cast(@Package)->meta::external::language::python::serialization::packageToString($recursive, $exclusions))->joinStrings('\n'), | $s);
 }
 
-
 function meta::external::language::python::serialization::toString(pe:PackageableElement[1]):String[1]
+{
+  meta::external::language::python::serialization::toString($pe, meta::external::language::python::serialization::defaultConfig()) 
+}
+
+function meta::external::language::python::serialization::toString(pe:PackageableElement[1],config:meta::external::language::python::serialization::Config[1]):String[1]
 { 
-  $pe->match([c:Class<Any>[1] | meta::external::language::python::serialization::classToString($c),
+  $pe->match([c:Class<Any>[1] | meta::external::language::python::serialization::classToString($c,$config),
             e:Enumeration<Any>[1] | meta::external::language::python::serialization::enumerationToString($e),
             a:Any[1] | ''])
 }
 
-function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1]):String[1]
+function meta::external::language::python::serialization::classToString(clazz:Class<Any>[1],config:meta::external::language::python::serialization::Config[1]):String[1]
+{
+  if($config.baseGeneratorType == meta::external::language::python::serialization::PythonClassGenerator.DATA_CLASSES, 
+     | meta::external::language::python::serialization::classToDataclassString($clazz),
+     | meta::external::language::python::serialization::classToNativeString($clazz))
+}
+
+function meta::external::language::python::serialization::classToDataclassString(clazz:Class<Any>[1]):String[1]
+{
+  let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations)->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
+  '\n@dataclass' + meta::external::language::python::serialization::buildClassHeader($clazz)
+  + $allProps->map(p | let n = meta::external::language::python::serialization::propertyName($p);
+                       let tp = meta::external::language::python::serialization::convertType($p.genericType);
+                       '    ' + $n + ': ' 
+                       + if($p.multiplicity->isToMany(), 
+                              | 'list[' + $tp + ']' + if($p.multiplicity.lowerBound->isNotEmpty() && $p.multiplicity->getLowerBound() == 0, | ' = field(default_factory=list)', | ''), 
+                              | $tp + if($p.multiplicity->getLowerBound() == 0, | ' = None', | ''));)->joinStrings('\n') +   
+                       if($allProps->isEmpty(), | '    pass', | '') + '\n\n';
+}
+
+function meta::external::language::python::serialization::classToNativeString(clazz:Class<Any>[1]):String[1]
 {
   //Put mandatory properties first
   let allProps = $clazz.properties->concatenate($clazz.propertiesFromAssociations)->sort( { p1, p2 | meta::external::language::python::serialization::multiplicityOrderBy($p1, $p2) });
-
-  let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
-
-
   let genz = $clazz.generalizations.general.rawType->filter( t | $t != Any );
-
   let inheritedProps = $clazz->meta::external::language::python::serialization::inheritedProperties()->sort( { p1, p2 | meta::external::language::python::serialization::compareProperties($p1, $p2) });
   let propsWithInheritedProps = $inheritedProps->concatenate($allProps)->sort( { p1, p2 | meta::external::language::python::serialization::compareProperties($p1, $p2) });
 
-
-  '\nclass ' + $clazz.name->toOne() + '(' + $genz.name->joinStrings(',') + '):\n' +
-  $docs + 
-  '\n' +
+  meta::external::language::python::serialization::buildClassHeader($clazz) + '\n' +
   '    def __init__(self' + if($propsWithInheritedProps->isEmpty(), | '' , | $propsWithInheritedProps->map(p | meta::external::language::python::serialization::propertyName($p) + if($p.genericType.rawType->isNotEmpty(), | 
               let tp = meta::external::language::python::serialization::convertType($p.genericType);
               ':' 
@@ -110,8 +149,23 @@ function meta::external::language::python::serialization::classToString(clazz:Cl
         $allProps->map(p | let n = meta::external::language::python::serialization::propertyName($p); 
                            '        self.' + $n + ' = ' + if ($p.multiplicity->isToMany(), | if($p.multiplicity.lowerBound->isNotEmpty() && $p.multiplicity->getLowerBound() == 0, | '[] if ' + $n + ' is None else ', | ''), | '') + $n + '\n';)->joinStrings() +
         if($propsWithInheritedProps->isEmpty() && $genz->isEmpty(), | '        pass\n', | '') +
-  '\n';
+  '\n' +
+  '    def __repr__(self):\n' +
+  '        return (\'' + $clazz.name->toOne() + '(\'\n' +
+  $propsWithInheritedProps->map(p | let n = meta::external::language::python::serialization::propertyName($p);
+                                    '                f\'' + $n + '={self.' + $n + '!r},\''; 
+                              )->joinStrings('\n') + 
+                              '\n                \')\')\n';
 }
+
+function meta::external::language::python::serialization::buildClassHeader(clazz:Class<Any>[1]):String[1]
+{
+  let genz = $clazz.generalizations.general.rawType->filter( t | $t != Any );
+  let docs = if( $clazz->meta::pure::functions::doc::hasDoc(), | '    """' + $clazz->meta::pure::functions::doc::getDocs()->toOne() + '\n    """\n', | '');
+  '\nclass ' + $clazz.name->toOne() + if($genz->isNotEmpty(), | '(' + $genz.name->joinStrings(',') + ')', | '') + ':\n' +
+  $docs; 
+}
+
 
 function meta::external::language::python::serialization::compareProperties(p1:AbstractProperty<Any>[1], p2:AbstractProperty<Any>[1]):Integer[1]
 {
@@ -155,7 +209,7 @@ function meta::external::language::python::serialization::convertType(gt:Generic
         if( $t == Boolean, | 'bool', | 
           if( $t == StrictDate , | 'datetime.date', | 
             if( $t == DateTime || $t == Date, | 'datetime.datetime', | 
-        '"' + $t.name->toOne() + '"'
+        '"' + if($t->isNotEmpty(), | $t.name->toOne(), | '') + '"'
   ))))));
 
 }
@@ -164,6 +218,11 @@ function meta::external::language::python::serialization::propertyName(property:
 {
   $property.name->toOne()->meta::pure::functions::string::splitOnCamelCase()->joinStrings('_')->toLower()
     ->meta::external::language::python::serialization::escapeKeywords()    
+}
+
+function meta::external::language::python::serialization::escapeKeywords(value:String[1]):String[1]
+{
+  if($value->in(['class', 'from']), | $value + '_', | $value )
 }
 
 function meta::external::language::python::serialization::escapeKeywords(value:String[1]):String[1]
